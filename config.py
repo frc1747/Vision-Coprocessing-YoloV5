@@ -1,0 +1,2 @@
+TEAM_NUMBER = 1747
+TABLE_NAME = 'Vision'

@@ -1,3 +1,23 @@
+# FRC Team 1747 Vision Coprocessing
+
+This repository is a fork of Yolo V5 used for vision processing on a Nvidia Jetson Nano.
+
+## Introduction
+
+The mainAI.py file is a modified version of the detect.py file that runs both the Yolo inferencing code and the communication with the RoboRio over NetworkTables.
+
+## Getting Started
+Install YoloV5 dependencies with pip3 install -r requirements.txt
+
+Install pynetworktables with `pip3 install pynetworktables`.
+
+Set team number and other configurations in config.py.
+
+Run mainAI.py.
+
+For more info about YoloV5, see below.
+
+# YOLOv5 README BELOW
 <div align="center">
 <p>
    <a align="left" href="https://ultralytics.com/yolov5" target="_blank">
