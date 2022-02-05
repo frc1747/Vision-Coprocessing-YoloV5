@@ -49,14 +49,44 @@ from utils.torch_utils import select_device, time_sync
 
 # Custom Network Tables Code
 from config import *
+import threading
+import time
 from networktables import NetworkTables
 
 def initNetworkTables():
-    print('Attempting to connect to RoboRio.')
+    def connectionListener(connected, info):
+        print(info, '; Connected=%s' % connected)
+        with cond:
+            notified[0] = True
+            cond.notify()
+
+    print('Attempting to connect to RoboRio. Timing out in',TIMEOUT_TIME,'seconds.')
+    # Start timeout timer
+    startTime = time.time()
+
+    cond = threading.Condition()
+    notified = [False]
 
     # As a client to connect to a robot
     serverIP = f'roborio-{TEAM_NUMBER}-frc.local'
     NetworkTables.initialize(server=serverIP)
+    NetworkTables.addConnectionListener(connectionListener, immediateNotify=True)
+    
+    with cond:
+        # Check if we connected
+        print("Waiting")
+        if not notified[0]:
+            # Keep waiting until we connect or time out
+            # Returns true if sucess, false if timed out.
+            connectionState = cond.wait(TIMEOUT_TIME)
+    
+    # Check if we timed out.
+    if connectionState == False:
+        print("Connection Timed out after",TIMEOUT_TIME,"seconds.")
+        quit()
+
+    print("Connection Established!")
+    
     global nTable
     nTable = NetworkTables.getTable(TABLE_NAME)
     nTable.putBoolean('connected', True)
@@ -182,6 +212,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
                 # Write results
+                redCargoData = []
+                blueCargoData = []
+                hubData = []
+
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -190,7 +224,48 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
                             
                             # Output Class ID, X, Y, Width, and Length
-                            print(('%g ' * len(line)).rstrip() % line)
+                            output = '%g ' * len(line).rstrip() % line
+                            print(output)
+
+                            # Turn string into list
+                            output = output.split()
+                            # If class ==  0 its red if the class is 1 its blue
+                            if output[0] == 0:
+                                redCargoData.append(output)
+                            elif output[0] == 1:
+                                blueCargoData.append(output)
+                            elif output[0] == 2:
+                                hubData.append(output)
+
+                # Send the data
+                nTable.putNumber("/RedCargo/count", len(redCargoData))
+                index = 0
+                for data in redCargoData:
+                    keyPath = f"/{TABLE_NAME}/RedCargo/{index}"
+                    nTable.putNumber(f"{keyPath}/x", data[1])
+                    nTable.putNumber(f"{keyPath}/y", data[2])
+                    nTable.putNumber(f"{keyPath}/w", data[3])
+                    nTable.putNumber(f"{keyPath}/l", data[4])
+                
+                nTable.putNumber("/BlueCargo/count", len(blueCargoData))
+                index = 0
+                for data in blueCargoData:
+                    keyPath = "/BlueCargo/{index}"
+                    nTable.putNumber(f"{keyPath}/x", data[1])
+                    nTable.putNumber(f"{keyPath}/y", data[2])
+                    nTable.putNumber(f"{keyPath}/w", data[3])
+                    nTable.putNumber(f"{keyPath}/l", data[4])
+                
+                # We should never have more than 1 hub detected.
+                # If we do though, it should handle that too.
+                nTable.putNumber("/Hub/count", len(hubData))
+                index = 0
+                for data in hubData:
+                    keyPath = "/Hub/{index}"
+                    nTable.putNumber(f"{keyPath}/x", data[1])
+                    nTable.putNumber(f"{keyPath}/y", data[2])
+                    nTable.putNumber(f"{keyPath}/w", data[3])
+                    nTable.putNumber(f"{keyPath}/l", data[4])
 
                     ''' DISABLE DRAWING BOUNDING BOXES
                     if save_img or save_crop or view_img:  # Add bbox to image
@@ -227,6 +302,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                         save_path = str(Path(save_path).with_suffix('.mp4'))  # force *.mp4 suffix on results videos
                         vid_writer[i] = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer[i].write(im0)
+        
+        # Check if we should exit
+        if nTable.getBoolean(f"/{TABLE_NAME}/stop"):
+            break
 
     # Print results
     t = tuple(x / seen * 1E3 for x in dt)  # speeds per image
@@ -294,5 +373,3 @@ if __name__ == "__main__":
     # Start YOLO Process
     opt = parse_opt()
     mainYolo(opt)
-
-   

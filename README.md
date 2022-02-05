@@ -17,6 +17,49 @@ Run mainAI.py.
 
 For more info about YoloV5, see below.
 
+## Network Tables Structure
+
+Here is how the network tables are set up.
+```
+TABLE_NAME  ("Vision" by default)
+├─connected (Turns true when coproccesor is connected)
+├─ready     (Turns true when YoloV5 fully loads)
+├─stop      (YoloV5 will stop running when this value is true)
+├─RedCargo  (Contains data for all red cargo detected)
+│ ├─count   (How many Red Cargo were detected this frame)
+│ ├─1
+│ │ ├─x
+│ │ ├─y
+│ │ ├─l
+│ │ └─w
+│ ├─2
+│ │ ├─x
+│ │ ├─y
+│ │ ├─l
+│ │ └─w
+│ └─etc     (There may be garbage data from previous frames, so use the count to only extract valid data)
+├─BlueCargo
+│ ├─count
+│ ├─1
+│ │ ├─x
+│ │ ├─y
+│ │ ├─l
+│ │ └─w
+│ ├─2
+│ │ ├─x
+│ │ ├─y
+│ │ ├─l
+│ │ └─w
+│ └─etc
+└─Hub
+  ├─count
+  ├─1
+  │ ├─x
+  │ ├─y
+  │ ├─l
+  │ └─w
+  └─etc (Only 1 should be detect but if there are more they will be here.)
+```
 # YOLOv5 README BELOW
 <div align="center">
 <p>
