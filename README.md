@@ -58,7 +58,7 @@ TABLE_NAME  ("Vision" by default)
   │ ├─y
   │ ├─l
   │ └─w
-  └─etc (Only 1 should be detect but if there are more they will be here.)
+  └─etc (Only 1 should be detected but if there are more they will be here.)
 ```
 # YOLOv5 README BELOW
 <div align="center">
