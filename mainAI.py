@@ -68,7 +68,7 @@ def initNetworkTables():
     notified = [False]
 
     # As a client to connect to a robot
-    serverIP = f'roborio-{TEAM_NUMBER}-frc.local'
+    serverIP = TEAM_IP
     NetworkTables.initialize(server=serverIP)
     NetworkTables.addConnectionListener(connectionListener, immediateNotify=True)
     
@@ -90,6 +90,8 @@ def initNetworkTables():
     global nTable
     nTable = NetworkTables.getTable(TABLE_NAME)
     nTable.putBoolean('connected', True)
+    # Set Network Tables Ready State
+    nTable.putBoolean('ready', False)
     if nTable.getBoolean('connected',defaultValue=False):
         print('Connected to RoboRio at', serverIP)
     else:
@@ -224,48 +226,51 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
                             
                             # Output Class ID, X, Y, Width, and Length
-                            output = '%g ' * len(line).rstrip() % line
+                            output = ('%g ' * len(line)).rstrip() % line
                             print(output)
 
                             # Turn string into list
                             output = output.split()
                             # If class ==  0 its red if the class is 1 its blue
-                            if output[0] == 0:
+                            if output[0] == "0":
                                 redCargoData.append(output)
-                            elif output[0] == 1:
+                            elif output[0] == "1":
                                 blueCargoData.append(output)
-                            elif output[0] == 2:
+                            elif output[0] == "2":
                                 hubData.append(output)
 
                 # Send the data
                 nTable.putNumber("/RedCargo/count", len(redCargoData))
                 index = 0
                 for data in redCargoData:
-                    keyPath = f"/{TABLE_NAME}/RedCargo/{index}"
+                    keyPath = f"/RedCargo/{index}"
                     nTable.putNumber(f"{keyPath}/x", data[1])
                     nTable.putNumber(f"{keyPath}/y", data[2])
                     nTable.putNumber(f"{keyPath}/w", data[3])
                     nTable.putNumber(f"{keyPath}/l", data[4])
+                    index += 1
                 
                 nTable.putNumber("/BlueCargo/count", len(blueCargoData))
                 index = 0
                 for data in blueCargoData:
-                    keyPath = "/BlueCargo/{index}"
+                    keyPath = f"/BlueCargo/{index}"
                     nTable.putNumber(f"{keyPath}/x", data[1])
                     nTable.putNumber(f"{keyPath}/y", data[2])
                     nTable.putNumber(f"{keyPath}/w", data[3])
                     nTable.putNumber(f"{keyPath}/l", data[4])
+                    index += 1
                 
                 # We should never have more than 1 hub detected.
                 # If we do though, it should handle that too.
                 nTable.putNumber("/Hub/count", len(hubData))
                 index = 0
                 for data in hubData:
-                    keyPath = "/Hub/{index}"
+                    keyPath = f"/Hub/{index}"
                     nTable.putNumber(f"{keyPath}/x", data[1])
                     nTable.putNumber(f"{keyPath}/y", data[2])
                     nTable.putNumber(f"{keyPath}/w", data[3])
                     nTable.putNumber(f"{keyPath}/l", data[4])
+                    index += 1
 
                     ''' DISABLE DRAWING BOUNDING BOXES
                     if save_img or save_crop or view_img:  # Add bbox to image
@@ -304,7 +309,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                     vid_writer[i].write(im0)
         
         # Check if we should exit
-        if nTable.getBoolean(f"/{TABLE_NAME}/stop"):
+        if nTable.getBoolean("/stop", False):
             break
 
     # Print results
